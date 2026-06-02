@@ -1,0 +1,16 @@
+{
+  "Name": "Smartphone App Game",
+  "Author": "d5a1lamdtd",
+  "Version": "1.0",
+  "Description": "Adds the Games app group to Smartphone via API registration.",
+  "UniqueID": "d5a1lamdtd.Smartphone-AppGame",
+  "EntryDll": "Smartphone-AppGame.dll",
+  "MinimumApiVersion": "4.0.0",
+  "UpdateKeys": [ "Nexus:46250" ],
+  "Dependencies": [
+    {
+      "UniqueID": "d5a1lamdtd.Smartphone",
+      "IsRequired": true
+    }
+  ]
+}
