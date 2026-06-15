@@ -204,12 +204,14 @@ namespace SmartphoneAppGame
             Game1.currentMinigame = new Darts();
         }
 
-        private static void OpenPrairieKing()
+        private void OpenPrairieKing()
         {
-            if (!Context.IsWorldReady)
+            if (!Context.IsWorldReady || this.smartphoneApi == null)
                 return;
 
-            Game1.currentMinigame = new AbigailGame();
+            Game1.activeClickableMenu = new PraiseKingStartScreen(
+                this.smartphoneApi,
+                () => this.smartphoneApi.OpenPhoneAppGroup(this.ModManifest.UniqueID, GamesGroupId));
         }
 
         private void StartAbigailPraiseKing(string npcName)
