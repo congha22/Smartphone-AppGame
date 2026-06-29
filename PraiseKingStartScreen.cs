@@ -15,17 +15,17 @@ namespace SmartphoneAppGame
         private readonly Action onBack;
 
         // Layout bounds
-        private readonly int phoneFrameWidth;
-        private readonly int phoneFrameHeight;
-        private readonly int phoneContentOffsetX;
-        private readonly int phoneContentOffsetY;
-        private readonly float phoneUiScale;
+        private int phoneFrameWidth;
+        private int phoneFrameHeight;
+        private int phoneContentOffsetX;
+        private int phoneContentOffsetY;
+        private float phoneUiScale;
 
-        private readonly Texture2D? phoneFrameTexture;
-        private readonly Texture2D? phoneBackgroundTexture;
+        private Texture2D? phoneFrameTexture;
+        private Texture2D? phoneBackgroundTexture;
 
-        private readonly int contentWidth;
-        private readonly int contentHeight;
+        private int contentWidth;
+        private int contentHeight;
 
         // Drag State
         private bool isDragging;
@@ -167,6 +167,9 @@ namespace SmartphoneAppGame
                 b.Draw(this.phoneFrameTexture, frameRect, Color.White);
             }
 
+            // Draw phone size adjustment buttons
+            this.smartphoneApi.DrawPhoneSizeButtons(b, this.xPositionOnScreen, this.yPositionOnScreen);
+
             drawMouse(b);
         }
 
@@ -289,6 +292,11 @@ namespace SmartphoneAppGame
                 return;
             }
 
+            if (this.smartphoneApi.HandlePhoneSizeButtonsClick(x, y, this.xPositionOnScreen, this.yPositionOnScreen))
+            {
+                return;
+            }
+
             this.lastScrollMouseY = y;
             this.touchScrollStartY = y;
             this.hasTouchScrolled = false;
@@ -389,6 +397,8 @@ namespace SmartphoneAppGame
 
         public override void update(GameTime time)
         {
+            UpdateScaleAndDimensions();
+
             base.update(time);
 
             this.bounceTimer += (float)time.ElapsedGameTime.TotalSeconds;
@@ -399,7 +409,63 @@ namespace SmartphoneAppGame
                 this.yPositionOnScreen = Game1.getMouseY() - this.dragOffsetY;
                 ClampToViewport();
                 CalculateLayout();
+                this.smartphoneApi.SetPhonePosition(this.xPositionOnScreen, this.yPositionOnScreen);
             }
+        }
+
+        private void UpdateScaleAndDimensions()
+        {
+            float currentScale = this.smartphoneApi.GetPhoneUiScale();
+            if (currentScale != this.phoneUiScale)
+            {
+                this.phoneUiScale = currentScale;
+                this.phoneFrameWidth = this.smartphoneApi.GetPhoneFrameWidth();
+                this.phoneFrameHeight = this.smartphoneApi.GetPhoneFrameHeight();
+                var (offX, offY) = this.smartphoneApi.GetPhoneContentOffset();
+                this.phoneContentOffsetX = offX;
+                this.phoneContentOffsetY = offY;
+                this.phoneFrameTexture = this.smartphoneApi.GetPhoneFrameTexture();
+                this.phoneBackgroundTexture = this.smartphoneApi.GetPhoneBackgroundTexture();
+
+                this.width = this.phoneFrameWidth;
+                this.height = this.phoneFrameHeight;
+
+                if (this.phoneBackgroundTexture != null && !this.phoneBackgroundTexture.IsDisposed)
+                {
+                    this.contentWidth = (int)Math.Round(this.phoneBackgroundTexture.Width * this.phoneUiScale);
+                    this.contentHeight = (int)Math.Round(this.phoneBackgroundTexture.Height * this.phoneUiScale);
+                }
+                else
+                {
+                    this.contentWidth = Math.Max(1, this.phoneFrameWidth - (this.phoneContentOffsetX * 2));
+                    this.contentHeight = Math.Max(1, this.phoneFrameHeight - this.phoneContentOffsetY - ScaleValue(80));
+                }
+
+                CalculateLayout();
+            }
+        }
+
+        public override void receiveKeyPress(Microsoft.Xna.Framework.Input.Keys key)
+        {
+            if (key == Microsoft.Xna.Framework.Input.Keys.Escape)
+            {
+                this.onBack?.Invoke();
+                return;
+            }
+
+            string keyStr = key.ToString();
+            if (keyStr == this.smartphoneApi.GetDecreaseSizeKey())
+            {
+                this.smartphoneApi.AdjustPhoneSize(-0.1f);
+                return;
+            }
+            if (keyStr == this.smartphoneApi.GetIncreaseSizeKey())
+            {
+                this.smartphoneApi.AdjustPhoneSize(0.1f);
+                return;
+            }
+
+            base.receiveKeyPress(key);
         }
 
         private void ClampToViewport()

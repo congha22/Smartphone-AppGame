@@ -1,3 +1,6 @@
+using System;
+using System.Collections.Generic;
+using Microsoft.Xna.Framework;
 using Microsoft.Xna.Framework.Graphics;
 using SmartphoneAppGame.Data;
 using StardewModdingAPI;
@@ -8,10 +11,17 @@ using StardewValley.Minigames;
 
 namespace SmartphoneAppGame
 {
+    public class ContactActionCardButton : IContactActionCardButton
+    {
+        public string Text { get; set; } = string.Empty;
+        public Color BackgroundColor { get; set; } = Color.White;
+        public Color TextColor { get; set; } = Color.Black;
+        public Action<string>? OnClick { get; set; }
+    }
+
     internal sealed class ModEntry : Mod
     {
         private const string SmartphoneModId = "d5a1lamdtd.Smartphone";
-        private const string GamesGroupId = "games";
 
         private const string ItemDartsId = "darts";
         private const string ItemPirateId = "prairie_king";
@@ -22,7 +32,6 @@ namespace SmartphoneAppGame
 
         private ISmartPhoneApi? smartphoneApi;
 
-        private Texture2D? appGameIcon;
         private Texture2D? gameDartsIcon;
         private Texture2D? gamePirateIcon;
         private Texture2D? gameCartIcon;
@@ -45,13 +54,12 @@ namespace SmartphoneAppGame
             }
 
             this.LoadIcons();
-            this.RegisterGamesAppGroup();
+            this.RegisterGameApps();
             this.RegisterChatQuickActions();
         }
 
         private void LoadIcons()
         {
-            this.appGameIcon = this.Helper.ModContent.Load<Texture2D>("assets/app_game.png");
             this.gameDartsIcon = this.Helper.ModContent.Load<Texture2D>("assets/game_darts.png");
             this.gamePirateIcon = this.Helper.ModContent.Load<Texture2D>("assets/game_pirate.png");
             this.gameCartIcon = this.Helper.ModContent.Load<Texture2D>("assets/game_cart.png");
@@ -60,10 +68,9 @@ namespace SmartphoneAppGame
             this.gameCraneIcon = this.Helper.ModContent.Load<Texture2D>("assets/game_crane.png");
         }
 
-        private void RegisterGamesAppGroup()
+        private void RegisterGameApps()
         {
             if (this.smartphoneApi == null
-                || this.appGameIcon == null
                 || this.gameDartsIcon == null
                 || this.gamePirateIcon == null
                 || this.gameCartIcon == null
@@ -74,72 +81,62 @@ namespace SmartphoneAppGame
                 return;
             }
 
-            bool groupRegistered = this.smartphoneApi.RegisterPhoneAppGroup(
-                ownerModId: this.ModManifest.UniqueID,
-                groupId: GamesGroupId,
-                displayName: "Games",
-                iconTexture: this.appGameIcon,
-                sortOrder: 999,
-                sourceRect: null,
-                isVisible: () => Context.IsWorldReady,
-                getBadgeCount: null);
-
-            if (!groupRegistered)
-            {
-                this.Monitor.Log("Failed to register Smartphone Games app group.", LogLevel.Warn);
-                return;
-            }
-
-            this.RegisterGameItem(ItemDartsId, "Darts", this.gameDartsIcon, OpenDarts, 0);
-            this.RegisterGameItem(ItemPirateId, "Prairie King", this.gamePirateIcon, OpenPrairieKing, 1);
-            this.RegisterGameItem(ItemMineCartId, "Mine Cart", this.gameCartIcon, OpenMineCart, 2);
-            this.RegisterGameItem(ItemCalicoJackId, "Calico Jack", this.gameJackIcon, OpenCalicoJack, 3);
-            this.RegisterGameItem(ItemCraneId, "Crane", this.gameCraneIcon, OpenCrane, 4);
-            this.RegisterGameItem(ItemSlotsId, "Slots", this.gameSpinIcon, OpenSlots, 5);
+            this.RegisterGameApp(ItemDartsId, "Darts", this.gameDartsIcon, OpenDarts);
+            this.RegisterGameApp(ItemPirateId, "Prairie King", this.gamePirateIcon, OpenPrairieKing);
+            this.RegisterGameApp(ItemMineCartId, "Mine Cart", this.gameCartIcon, OpenMineCart);
+            this.RegisterGameApp(ItemCalicoJackId, "Calico Jack", this.gameJackIcon, OpenCalicoJack);
+            this.RegisterGameApp(ItemCraneId, "Crane", this.gameCraneIcon, OpenCrane);
+            this.RegisterGameApp(ItemSlotsId, "Slots", this.gameSpinIcon, OpenSlots);
         }
 
         private void RegisterChatQuickActions()
         {
-            if (this.smartphoneApi == null || this.gamePirateIcon == null)
+            if (this.smartphoneApi == null)
                 return;
 
-            bool actionRegistered = this.smartphoneApi.RegisterChatQuickActionButton(
-                ownerModId: this.ModManifest.UniqueID,
-                actionId: "abigail_praise_king",
-                iconTexture: this.gamePirateIcon,
-                onClick: this.StartAbigailPraiseKing,
-                closePhoneOnLaunch: true,
-                sortOrder: 999,
-                sourceRect: null,
+            var playButton = new ContactActionCardButton
+            {
+                Text = "Play",
+                BackgroundColor = Color.CadetBlue,
+                TextColor = Color.White,
+                OnClick = this.StartAbigailPraiseKing
+            };
+
+            bool actionRegistered = this.smartphoneApi.RegisterContactActionCard(
+                modId: this.ModManifest.UniqueID,
+                cardTitle: "Prairie King",
+                buttons: new List<IContactActionCardButton> { playButton },
                 npcNames: new List<string> { "Abigail" });
 
             if (!actionRegistered)
             {
-                this.Monitor.Log("Failed to register Abigail Praise King quick action.", LogLevel.Warn);
+                this.Monitor.Log("Failed to register Abigail Praise King contact card.", LogLevel.Warn);
             }
         }
 
-        private void RegisterGameItem(string itemId, string displayName, Texture2D icon, Action onClick, int sortOrder)
+        private void RegisterGameApp(string appId, string displayName, Texture2D icon, Action onClick)
         {
             if (this.smartphoneApi == null)
                 return;
 
-            bool itemRegistered = this.smartphoneApi.RegisterPhoneAppGroupItem(
+            bool appRegistered = this.smartphoneApi.RegisterPhoneApp(
                 ownerModId: this.ModManifest.UniqueID,
-                groupId: GamesGroupId,
-                itemId: itemId,
+                appId: appId,
                 displayName: displayName,
-                iconTexture: icon,
                 onClick: onClick,
                 closePhoneOnLaunch: true,
-                sortOrder: sortOrder,
                 sourceRect: null,
-                isVisible: () => Context.IsWorldReady,
-                getBadgeCount: null);
+                getBadgeCount: null,
+                supportedSizes: Array.Empty<AppSize>(),
+                onDrawWidget: null,
+                themedIconTextures: new Dictionary<string, Texture2D>(StringComparer.OrdinalIgnoreCase)
+                {
+                    { "default", icon }
+                });
 
-            if (!itemRegistered)
+            if (!appRegistered)
             {
-                this.Monitor.Log($"Failed to register Smartphone game item '{itemId}'.", LogLevel.Warn);
+                this.Monitor.Log($"Failed to register Smartphone game app '{appId}'.", LogLevel.Warn);
             }
         }
 
@@ -211,7 +208,7 @@ namespace SmartphoneAppGame
 
             Game1.activeClickableMenu = new PraiseKingStartScreen(
                 this.smartphoneApi,
-                () => this.smartphoneApi.OpenPhoneAppGroup(this.ModManifest.UniqueID, GamesGroupId));
+                () => this.smartphoneApi.OpenPhoneHomeScreen());
         }
 
         private void StartAbigailPraiseKing(string npcName)
@@ -220,10 +217,6 @@ namespace SmartphoneAppGame
                 return;
 
             Game1.currentMinigame = new AbigailGame(Game1.getCharacterFromName(npcName));
-            this.smartphoneApi?.SendSmartphoneMessageFromNPC(
-                "Abigail",
-                "Thank you for playing Prairie King with me!",
-                Game1.player.UniqueMultiplayerID.ToString());
         }
 
         private void OpenSlots()
