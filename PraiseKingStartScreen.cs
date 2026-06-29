@@ -407,7 +407,6 @@ namespace SmartphoneAppGame
             {
                 this.xPositionOnScreen = Game1.getMouseX() - this.dragOffsetX;
                 this.yPositionOnScreen = Game1.getMouseY() - this.dragOffsetY;
-                ClampToViewport();
                 CalculateLayout();
                 this.smartphoneApi.SetPhonePosition(this.xPositionOnScreen, this.yPositionOnScreen);
             }
@@ -468,10 +467,5 @@ namespace SmartphoneAppGame
             base.receiveKeyPress(key);
         }
 
-        private void ClampToViewport()
-        {
-            this.xPositionOnScreen = Math.Max(0, Math.Min(this.xPositionOnScreen, Game1.uiViewport.Width - this.width));
-            this.yPositionOnScreen = Math.Max(0, Math.Min(this.yPositionOnScreen, Game1.uiViewport.Height - this.height));
-        }
     }
 }
